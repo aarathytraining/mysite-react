@@ -1,12 +1,12 @@
 pipeline{
 	agent any
-    stages {
+	stages {
 		stage('Checkout') {
-            steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'jenkins-user-github', url: 'https://github.com/aarathytraining/mysite-react.git']]])
+            		steps {
+                		checkout([$class: 'GitSCM', branches: [[name: '*/main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'jenkins-user-github', url: 'https://github.com/aarathytraining/mysite-react.git']]])
                 sh "ls -lart ./*"
-            }
-        }
+            		}
+        	}
 		
 		stage('Build'){
 			steps{
