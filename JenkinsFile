@@ -38,18 +38,17 @@ pipeline{
                 }
             }
         }
-        stage('Scan') {
+        stage('Scan Code ') {
             steps{
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE')
                 {
                 // snykSecurity organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium', snykInstallation: 'snyk1', snykTokenId: 'snyk1', targetFile: 'package.json'
                 //snykSecurity organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium',snykInstallation: 'snyk1', snykTokenId: 'mysnyk', targetFile: 'package.json'
                 snykSecurity failOnError: false, organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium',snykInstallation: 'snyk1', snykTokenId: 'mysnyk', targetFile: 'package.json'
-                snykSecurity failOnError: false, organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium',snykInstallation: 'snyk1', snykTokenId: 'mysnyk', targetFile: 'Dockerfile'
+                
                 }
             }
         }
-        
         stage('Deploy image to docker'){
             steps{
             //	sh "ssh -o StrictHostKeyChecking=no -i /home/ubuntu/jenkins02.pem ubuntu@ec2-54-145-10-17.compute-1.amazonaws.com 'sudo docker stop mysite-react-page && sudo docker rm mysite-react-page && sudo docker run --name mysite-react-page -itd -p 3000:80 aarathytraining/${imagename}'"
