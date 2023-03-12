@@ -1,41 +1,65 @@
 pipeline{
-	agent any
-	stages {
-		stage('Checkout') {
-            		steps {
-                		checkout([$class: 'GitSCM', branches: [[name: '*/main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'jenkins-user-github', url: 'https://github.com/aarathytraining/mysite-react.git']]])
-                		sh "ls -lart ./*"
-            		}
-        	}
-		
-		stage('Build'){
-			steps{
-				sh 'npm install'
-				sh 'npm run build'
-			}
-		}
-		
-		stage('Test'){
-			steps{
-				sh 'npm test -- --watchAll=false'
-			}
-		}
-		
-		stage('Create Image & push'){
-			steps{
-				sh 'docker -H :2376 build -t aarathytraining/mysite-react:v1 . && docker -H :2376 push aarathytraining/mysite-react:v1'
-			}
-		}
-		
-		stage('Deploy image to docker'){
-			steps{
-				sh "ssh -o StrictHostKeyChecking=no -i /home/ubuntu/jenkins02.pem ubuntu@ec2-54-237-223-224.compute-1.amazonaws.com 'sudo docker stop mysite-react-page && sudo docker rm mysite-react-page && sudo docker run --name mysite-react-page -itd -p 3000:80 aarathytraining/mysite-react:v1'"
-			}
-		}
-		stage('End of job'){
-			steps{
-				sh 'echo "end of pipeline"'
-			}
-		}
-	}
+    agent any
+    environment{
+        imagename = "mysite-react:${BUILD_NUMBER}"
+        container_name = "mysite-react-cont-dev"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([$class: 'GitSCM', branches: [[name: '*/main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'jenkins-user-github', url: 'https://github.com/aarathytraining/mysite-react.git']]])
+                sh 'echo build number is ${BUILD_NUMBER} && echo $imagename && echo $container_name' 
+                sh "ls -lart ./*"
+            }
+        }
+        stage('Build'){
+            steps{
+                sh 'npm install'
+                sh 'npm run build'
+            }
+        }
+        stage('Test'){
+            steps{
+                sh 'npm test -- --watchAll=false'
+            }
+        }
+        stage('Build Image'){
+            steps{
+                sh 'echo '
+                sh 'docker build -t aarathytraining/${imagename} .'
+            }
+        }
+        stage('Push Image'){
+            steps{
+                withCredentials([usernamePassword(credentialsId: 'dockerHub', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) 
+                {
+                sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPassword}"
+                sh 'docker push aarathytraining/${imagename} '
+                }
+            }
+        }
+        stage('Scan') {
+            steps{
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE')
+                {
+                // snykSecurity organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium', snykInstallation: 'snyk1', snykTokenId: 'snyk1', targetFile: 'package.json'
+                //snykSecurity organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium',snykInstallation: 'snyk1', snykTokenId: 'mysnyk', targetFile: 'package.json'
+                snykSecurity failOnError: false, organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium',snykInstallation: 'snyk1', snykTokenId: 'mysnyk', targetFile: 'package.json'
+                snykSecurity failOnError: false, organisation: 'aarathy.training', projectName: 'mysite-react', severity: 'medium',snykInstallation: 'snyk1', snykTokenId: 'mysnyk', targetFile: 'Dockerfile'
+                }
+            }
+        }
+        
+        stage('Deploy image to docker'){
+            steps{
+            //	sh "ssh -o StrictHostKeyChecking=no -i /home/ubuntu/jenkins02.pem ubuntu@ec2-54-145-10-17.compute-1.amazonaws.com 'sudo docker stop mysite-react-page && sudo docker rm mysite-react-page && sudo docker run --name mysite-react-page -itd -p 3000:80 aarathytraining/${imagename}'"
+            sh "ssh -o StrictHostKeyChecking=no -i /home/ubuntu/jenkins02.pem ubuntu@ec2-54-145-10-17.compute-1.amazonaws.com 'sudo docker stop $container_name && sudo docker rm $container_name && sudo docker run --name $container_name -itd -p 3000:80 aarathytraining/${imagename}'"
+            }
+        }
+        stage('End of job'){
+            steps{
+                sh 'echo "end of pipeline"'
+            }
+        }
+    }
 }
