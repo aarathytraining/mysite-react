@@ -11,7 +11,7 @@ CMD serve -s build
 EXPOSE 3000
 
 
-FROM nginx:stable-alpine
+FROM nginx:mainline-alpine
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
